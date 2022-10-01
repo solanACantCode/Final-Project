@@ -1,3 +1,202 @@
+<?php
+// Initialize the session
+session_start();
+ 
+// Check if the user is already logged in, if yes then redirect him to welcome page
+if(isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true){
+    header("location: welcome.php");
+    exit;
+}
+ 
+// Include config file
+require_once "config.php";
+ 
+// Define variables and initialize with empty values
+$username = $password = "";
+$username_err = $password_err = $login_err = "";
+ 
+// Processing form data when form is submitted
+if($_SERVER["REQUEST_METHOD"] == "POST"){
+ 
+    // Check if username is empty
+    if(empty(trim($_POST["username"]))){
+        $username_err = "Please enter username.";
+    } else{
+        $username = trim($_POST["username"]);
+    }
+    
+    // Check if password is empty
+    if(empty(trim($_POST["password"]))){
+        $password_err = "Please enter your password.";
+    } else{
+        $password = trim($_POST["password"]);
+    }
+    
+    // Validate credentials
+    if(empty($username_err) && empty($password_err)){
+        // Prepare a select statement
+        $sql = "SELECT id, username, password FROM users WHERE username = ?";
+        
+        if($stmt = mysqli_prepare($link, $sql)){
+            // Bind variables to the prepared statement as parameters
+            mysqli_stmt_bind_param($stmt, "s", $param_username);
+            
+            // Set parameters
+            $param_username = $username;
+            
+            // Attempt to execute the prepared statement
+            if(mysqli_stmt_execute($stmt)){
+                // Store result
+                mysqli_stmt_store_result($stmt);
+                
+                // Check if username exists, if yes then verify password
+                if(mysqli_stmt_num_rows($stmt) == 1){                    
+                    // Bind result variables
+                    mysqli_stmt_bind_result($stmt, $id, $username, $hashed_password);
+                    if(mysqli_stmt_fetch($stmt)){
+                        if(password_verify($password, $hashed_password)){
+                            // Password is correct, so start a new session
+                            session_start();
+                            
+                            // Store data in session variables
+                            $_SESSION["loggedin"] = true;
+                            $_SESSION["id"] = $id;
+                            $_SESSION["username"] = $username;                            
+                            
+                            // Redirect user to welcome page
+                            header("location: welcome.php");
+                        } else{
+                            // Password is not valid, display a generic error message
+                            $login_err = "Invalid username or password.";
+                        }
+                    }
+                } else{
+                    // Username doesn't exist, display a generic error message
+                    $login_err = "Invalid username or password.";
+                }
+            } else{
+                echo "Oops! Something went wrong. Please try again later.";
+            }
+
+            // Close statement
+            mysqli_stmt_close($stmt);
+        }
+    }
+    
+    // Close connection
+    mysqli_close($link);
+}
+
+//register area
+?>
+<?php
+// Include config file
+require_once "config.php";
+ 
+// Define variables and initialize with empty values
+$fullname = $username = $password = $confirm_password = $address = $license = "";
+$fullname_err = $username_err = $password_err = $confirm_password_err = $address_err = $license_err = "";
+ 
+// Processing form data when form is submitted
+if($_SERVER["REQUEST_METHOD"] == "POST"){
+ 
+    // Validate username
+    if(empty(trim($_POST["username"]))){
+        $username_err = "Please enter a username.";
+    } else{
+        // Prepare a select statement
+        $sql = "SELECT id FROM users WHERE username = ?";
+        
+        if($stmt = mysqli_prepare($link, $sql)){
+            // Bind variables to the prepared statement as parameters
+            mysqli_stmt_bind_param($stmt, "s", $param_username);
+            
+            // Set parameters
+            $param_username = trim($_POST["username"]);
+            
+            // Attempt to execute the prepared statement
+            if(mysqli_stmt_execute($stmt)){
+                /* store result */
+                mysqli_stmt_store_result($stmt);
+                
+                if(mysqli_stmt_num_rows($stmt) == 1){
+                    $username_err = "This username is already taken.";
+                } else{
+                    $username = trim($_POST["username"]);
+                }
+            } else{
+                echo "Oops! Something went wrong. Please try again later.";
+            }
+
+            // Close statement
+            mysqli_stmt_close($stmt);
+        }
+    }
+    
+    // Validate password
+    if(empty(trim($_POST["password"]))){
+        $password_err = "Please enter a password.";     
+    } elseif(strlen(trim($_POST["password"])) < 6){
+        $password_err = "Password must have atleast 6 characters.";
+    } else{
+        $password = trim($_POST["password"]);
+    }
+    
+    // Validate confirm password
+    if(empty(trim($_POST["confirm_password"]))){
+        $confirm_password_err = "Please confirm password.";     
+    } else{
+        $confirm_password = trim($_POST["confirm_password"]);
+        if(empty($password_err) && ($password != $confirm_password)){
+            $confirm_password_err = "Password did not match.";
+        }
+    }
+      if (empty(trim($_POST["address"]))) {
+        $address_err = "Please enter an address.";
+      } else {
+        $address = trim($_POST["address"]);
+      }
+    
+      if (empty(trim($_POST["license"]))) {
+        $age_err = "Please enter your license.";
+      } else {
+        $age = trim($_POST["license"]);
+      }
+    
+    // Check input errors before inserting in database
+    if (empty($username_err) && empty($password_err) && empty($confirm_password_err) && empty($name_err) && empty($address_err)) {
+
+        // Prepare an insert statement
+        $sql = "INSERT INTO users (username, password, address, license,) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    
+        if ($stmt = mysqli_prepare($link, $sql)) {
+          // Bind variables to the prepared statement as parameters
+          mysqli_stmt_bind_param($stmt, "sssssss", $param_username, $param_password, $param_name, $param_address, $param_age, $param_sex, $param_civil_status);
+    
+          // Set parameters
+          $param_fullname = $fullname;
+          $param_username = $username;
+          $param_password = password_hash($password, PASSWORD_DEFAULT); // Creates a password hash
+          $param_address = $address;
+          $param_license = $license;
+          // Attempt to execute the prepared statement
+          if (mysqli_stmt_execute($stmt)) {
+            // Redirect to login page
+            header("location: login.php");
+          } else {
+            echo "Oops! Something went wrong. Please try again later.";
+          }
+
+            // Close statement
+            mysqli_stmt_close($stmt);
+        }
+    }
+    
+    // Close connection
+    mysqli_close($link);
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -92,7 +291,7 @@
 												<i class="input-icon uil uil-at"></i>
 											</div>	
 											<div class="form-group mt-2">
-												<input type="password" name="logpass" class="form-style" placeholder="Your Password" id="logpass" autocomplete="off">
+												<input type="password" name="password" class="form-style" placeholder="Your Password" id="password" autocomplete="off">
 												<i class="input-icon uil uil-lock-alt"></i>
 											</div>
 											<a href="#" class="btn mt-4">submit</a>
@@ -105,19 +304,23 @@
 										<div class="section text-center">
 											<h4 class="mb-4 pb-3">Sign Up</h4>
 											<div class="form-group">
-												<input type="text" name="logname" class="form-style" placeholder="Full name" id="logname" autocomplete="off">
+												<input type="text" name="fullname" class="form-style" placeholder="Full name" id="fullname" autocomplete="off">
+												<i class="input-icon uil uil-user"></i>
+											</div>	
+                                            <div class="form-group mt-2">
+												<input type="text" name="username" class="form-style" placeholder="Username" id="username" autocomplete="off">
 												<i class="input-icon uil uil-user"></i>
 											</div>	
 											<div class="form-group mt-2">
-												<input type="email" name="logemail" class="form-style" placeholder="Password" id="logpass" autocomplete="off">
+												<input type="password" name="password" class="form-style" placeholder="Password" id="password" autocomplete="off">
 												<i class="input-icon uil uil-at"></i>
 											</div>	
 											<div class="form-group mt-2">
-												<input type="password" name="logpass" class="form-style" placeholder="Confirm Password" id="logpass" autocomplete="off">
+												<input type="password" name="password" class="form-style" placeholder="Confirm Password" id="password" autocomplete="off">
 												<i class="input-icon uil uil-lock-alt"></i>
 											</div>
                                             <div class="form-group mt-2">
-												<input type="text" name="adress" class="form-style" placeholder="Adress" id="adress" autocomplete="off">
+												<input type="text" name="address" class="form-style" placeholder="Address" id="address" autocomplete="off">
 												<i class="input-icon uil uil-user"></i>
 											</div>	
                                             <div class="form-group mt-2">
@@ -147,13 +350,6 @@
         </div>
         <!-- Copyright -->
       </footer>
-
-
-
-
-
-
-
 
 </body>
 
